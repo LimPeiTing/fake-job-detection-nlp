@@ -108,19 +108,39 @@ def train_with_class_weights(X, y, epochs=5, batch_size=64):
 
 
 # Step 5: SMOTE + Class Weight 
-def train_smote_classweight(X, y, epochs=5, batch_size=64, model_path="models/lstm_model.keras"):
+import os
+import joblib
 
+def train_smote_classweight(
+    X, y, tokenizer,
+    epochs=5,
+    batch_size=64,
+    model_path="models/lstm_model.keras",
+    tokenizer_path="models/tokenizer.joblib"
+):
+    """
+    Train LSTM model using SMOTE + class weights.
+    Save both model and tokenizer.
+    """
+
+    # Ensure models directory exists
+    os.makedirs("models", exist_ok=True)
+
+    # Step 1: Apply SMOTE
     smote = SMOTE(random_state=42)
     X_smote, y_smote = smote.fit_resample(X, y)
 
+    # Step 2: Compute class weights
     classes = np.unique(y_smote)
     weights = compute_class_weight(class_weight="balanced", classes=classes, y=y_smote)
     class_weights = dict(zip(classes, weights))
 
+    # Step 3: Train/Test split
     X_train, X_test, y_train, y_test = train_test_split(
         X_smote, y_smote, test_size=0.2, random_state=42
     )
 
+    # Step 4: Build & train LSTM
     lstm_model = build_lstm_model()
     lstm_model.fit(
         X_train,
@@ -131,7 +151,8 @@ def train_smote_classweight(X, y, epochs=5, batch_size=64, model_path="models/ls
         class_weight=class_weights,
     )
 
-    # Save trained model
+    # Step 5: Save model and tokenizer
     lstm_model.save(model_path)
+    joblib.dump(tokenizer, tokenizer_path)
 
     return lstm_model
